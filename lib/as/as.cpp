@@ -1,75 +1,44 @@
 #include "as.h"
 
-// Constructor
-LightSensor::LightSensor(int pin) {
-  sensorPin = pin;
-  minValue = 0;
-  maxValue = 4095;
-  lastValue = 2048;  // Khởi tạo giá trị trung bình
-  inverted = false;  // Mặc định không đảo ngược
+#define ADC_MAX 4095        // ESP32 ADC 12-bit
+#define SAMPLE_COUNT 20    
+
+// --- Khởi tạo ---
+AS::AS(uint8_t pin) {
+    _pin = pin;
+    pinMode(_pin, INPUT);
+    result = {0.0f, false};
 }
 
-// Khởi tạo cảm biến
-void LightSensor::init() {
-  pinMode(sensorPin, INPUT);
+// --- Đọc ADC ---
+int AS::_readRaw() {
+    uint32_t sum = 0;
+
+    for (int i = 0; i < SAMPLE_COUNT; i++) {
+        sum += analogRead(_pin);
+        delay(2);
+    }
+
+    return sum / SAMPLE_COUNT;
 }
 
-// Đọc giá trị analog thô (không lọc)
-int LightSensor::readRawValue() {
-  return analogRead(sensorPin);
-}
+// --- Hàm read(): trả về % ánh sáng ---
+AS::Data AS::read() {
+    int raw = _readRaw();
 
-// Đọc giá trị analog với averaging filter (lấy trung bình)
-int LightSensor::readValue() {
-  long sum = 0;
-  // Đọc nhiều mẫu và lấy trung bình
-  for(int i = 0; i < SAMPLE_SIZE; i++) {
-    sum += analogRead(sensorPin);
-    delayMicroseconds(100);  // Delay rất nhỏ giữa các lần đọc
-  }
-  int avgValue = sum / SAMPLE_SIZE;  // Trung bình
-  
-  // Áp dụng EMA filter để làm mượt dữ liệu theo thời gian
-  int smoothValue = (int)(EMA_ALPHA * avgValue + (1.0 - EMA_ALPHA) * lastValue);
-  lastValue = smoothValue;  // Lưu giá trị cho lần đọc tiếp theo
-  
-  return smoothValue;
-}
+    if (raw < 0 || raw > ADC_MAX) {
+        result.valid = false;
+        return result;
+    }
 
-// Calibrate min/max value dựa trên cảm biến thực tế
-void LightSensor::calibrate(int minVal, int maxVal) {
-  minValue = minVal;
-  maxValue = maxVal;
-}
+    
+    result.intensity = (1.0f - (raw / (float)ADC_MAX)) * 100.0f;
 
-// Bật/tắt chế độ đảo ngược
-void LightSensor::setInverted(bool inv) {
-  inverted = inv;
-}
 
-// Reset EMA filter
-void LightSensor::resetFilter() {
-  lastValue = (minValue + maxValue) / 2;  // Đặt lastValue về giữa min/max
-}
+    // Giới hạn an toàn
+    if (result.intensity > 100.0f) result.intensity = 100.0f;
+    if (result.intensity < 0.0f)   result.intensity = 0.0f;
 
-// Đặt minValue = 0 (mức tối thiểu là 0%)
-void LightSensor::setMinValueToZero() {
-  minValue = 0;
-}
-
-// Đọc giá trị được mapping thành phần trăm (0-100%)
-int LightSensor::readPercentage() {
-  int rawValue = readValue();  // Dùng readValue() để có giá trị lọc
-  
-  // Nếu inverted = true, đảo ngược giá trị
-  if(inverted) {
-    rawValue = maxValue - (rawValue - minValue);
-  }
-  
-  // Map giá trị từ minValue-maxValue thành 0-100
-  int percentage = map(rawValue, minValue, maxValue, 0, 100);
-  // Đảm bảo giá trị nằm trong khoảng 0-100
-  if (percentage < 0) percentage = 0;
-  if (percentage > 100) percentage = 100;
-  return percentage;
+    result.valid = true;
+    return result;
 }
