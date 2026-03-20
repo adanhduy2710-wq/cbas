@@ -11,7 +11,7 @@ public:
         uint8_t memoryType;
         uint8_t capacity;
         bool    valid;
-    };
+    }
 
     W25QXX(uint8_t csPin, SPIClass &spi = SPI);
 
