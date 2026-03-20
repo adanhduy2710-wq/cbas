@@ -1,0 +1,8 @@
+-c --cpu Cortex-M3 -D__EVAL -g -O0 --apcs=interwork --split_sections
+-I.\RTE\Device\STM32F103C8
+-I.\RTE\_Target_1
+-IC:\Users\MyPC\AppData\Local\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include
+-IC:\Users\MyPC\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.4.1\Device\Include
+-IC:\Users\MyPC\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.4.1\Device\StdPeriph_Driver\inc
+-D__UVISION_VERSION="531" -D_RTE_ -DSTM32F10X_MD -D_RTE_
+-o .\objects\main.o --omf_browse .\objects\main.crf --depend .\objects\main.d "..\USER\main.c"
